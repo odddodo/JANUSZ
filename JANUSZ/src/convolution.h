@@ -64,59 +64,54 @@ const int8_t ghostKernel[3][3] = {
     CRGB temp[DISPLAY_HEIGHT][DISPLAY_WIDTH];
     CRGB source[DISPLAY_HEIGHT][DISPLAY_WIDTH];
 
-  void applyMaskedConvolution(const int8_t kernel[3][3],  CRGB* mask, ChannelSelector selectChannel, int divisor = 1, int bias = 0) {
-
-  
-    // Copy current LED state
-    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-      for (int x = 0; x < DISPLAY_WIDTH; x++) {
-        source[y][x] = leds[getLedIndexBasic(x, y)];
-      }
-    }
-  
-    // Apply convolution
-    for (int y = 0; y < DISPLAY_HEIGHT ; y++) {
-      for (int x = 0; x < DISPLAY_WIDTH ; x++) {
-        int idx = getLedIndexBasic(x, y);
-        int blendAmount = selectChannel(mask[idx]);
-  
-        int sumR = 0, sumG = 0, sumB = 0;
-        for (int ky = -1; ky <= 1; ky++) {
-          for (int kx = -1; kx <= 1; kx++) {
-            CRGB neighbor = source[y + ky][x + kx];
-            int kVal = kernel[ky + 1][kx + 1];
-            sumR += neighbor.r * kVal;
-            sumG += neighbor.g * kVal;
-            sumB += neighbor.b * kVal;
-          }
-        }
-  
-        CRGB convolved;
-        convolved.r = CLAMP((sumR / divisor) + bias);
-        convolved.g = CLAMP((sumG / divisor) + bias);
-        convolved.b = CLAMP((sumB / divisor) + bias);
-  
-        // Blend based on mask intensity
-        temp[y][x] = blend(source[y][x], convolved, blendAmount);
-      }
-    }
-  
-    // Copy edges unchanged
+void applyMaskedConvolution(const int8_t kernel[3][3], CRGB* mask, ChannelSelector selectChannel, int divisor = 1, int bias = 0) {
+  // Copy current LED state to source buffer
+  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
-      temp[0][x] = source[0][x];
-      temp[DISPLAY_HEIGHT - 1][x] = source[DISPLAY_HEIGHT - 1][x];
-    }
-    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-      temp[y][0] = source[y][0];
-      temp[y][DISPLAY_WIDTH - 1] = source[y][DISPLAY_WIDTH - 1];
-    }
-  
-    // Write result back to LED array
-    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-      for (int x = 0; x < DISPLAY_WIDTH; x++) {
-        leds[getLedIndexBasic(x, y)] = temp[y][x];
-      }
+      source[y][x] = leds[getLedIndexBasic(x, y)];
     }
   }
+
+  // Apply convolution to the entire frame with clamped edges
+  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+      int idx = getLedIndexBasic(x, y);
+      int blendAmount = selectChannel(mask[idx]);
+
+      int sumR = 0, sumG = 0, sumB = 0;
+
+      for (int ky = -1; ky <= 1; ky++) {
+        for (int kx = -1; kx <= 1; kx++) {
+          // Clamp neighbor coordinates to avoid out-of-bounds
+          int ny = constrain(y + ky, 0, DISPLAY_HEIGHT - 1);
+          int nx = constrain(x + kx, 0, DISPLAY_WIDTH - 1);
+          CRGB neighbor = source[ny][nx];
+
+          int kVal = kernel[ky + 1][kx + 1];
+          sumR += neighbor.r * kVal;
+          sumG += neighbor.g * kVal;
+          sumB += neighbor.b * kVal;
+        }
+      }
+
+      // Normalize and apply bias
+      CRGB convolved;
+      convolved.r = CLAMP((sumR / divisor) + bias);
+      convolved.g = CLAMP((sumG / divisor) + bias);
+      convolved.b = CLAMP((sumB / divisor) + bias);
+
+      // Blend with original pixel based on mask
+      temp[y][x] = blend(source[y][x], convolved, blendAmount);
+    }
+  }
+
+  // Write result back to LED array
+  for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+      leds[getLedIndexBasic(x, y)] = temp[y][x];
+    }
+  }
+}
+
 
 #endif

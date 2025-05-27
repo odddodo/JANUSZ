@@ -11,66 +11,33 @@
 #define CHIPSET WS2812B
 #define BRIGHTNESS 128
 
+#define I2C_SLAVE_ADDR 0x08  // Must match master's address
+
+const int NUM_SLIDERS = 45;
+uint8_t sliderValues[NUM_SLIDERS];
+
+struct ChannelSettings {
+   int sinFreq;
+   int amp;
+   int bias;
+   int phase;
+   int xScale;
+   int yScale;
+   int tScale;
+};
+
+ChannelSettings channels[6]; // 0: R, 1: G, 2: B, 3: NR, 4: NG, 5: NB
+
 CRGB leds[NUM_PIXELS];
 CRGB ledsPrev[NUM_PIXELS];  // buffer to hold previous smoothed values
 
 CRGB mask[NUM_PIXELS];
 CRGB maskPrev[NUM_PIXELS];
 
-uint8_t sinFreqR = 3;
-uint8_t sinFreqG = 15;
-uint8_t sinFreqB = 7;
-
-uint8_t amp_R=255;
-uint8_t amp_G=255;
-uint8_t amp_B=255;
-
-uint8_t bias_R =0;
-uint8_t bias_G =0;
-uint8_t bias_B =0;
-
-uint8_t phase_R=0;
-uint8_t phase_G=0;
-uint8_t phase_B=0;
-
-int xScaleR= 5000, yScaleR= 5000;
-int xScaleG = 5000, yScaleG= 5000;
-int xScaleB = 5000, yScaleB = 5000;
-
-int  tScaleR=10;
-int  tScaleG=30;
-int tScaleB=10;
-
 int  smoothing=96;
 
 uint8_t  scramble1=0;
 uint8_t  scramble2=0;
-
-//mask parameters:
-
-uint8_t m_sinFreqR = 2;
-uint8_t m_sinFreqG = 5;
-uint8_t m_sinFreqB = 7;
-
-uint8_t m_amp_R=128;
-uint8_t m_amp_G=128;
-uint8_t m_amp_B=128;
-
-uint8_t m_bias_R =128;
-uint8_t m_bias_G =128;
-uint8_t m_bias_B =128;
-
-uint8_t m_phase_R=0;
-uint8_t m_phase_G=0;
-uint8_t m_phase_B=0;
-
-int m_xScaleR= 3000, m_yScaleR= 3000;
-int m_xScaleG = 5000, m_yScaleG= 5000;
-int m_xScaleB = 7000, m_yScaleB = 7000;
-
-int  m_tScaleR=64;
-int  m_tScaleG=64;
-int  m_tScaleB=64;
 
 uint8_t  m_smoothing=96;
 

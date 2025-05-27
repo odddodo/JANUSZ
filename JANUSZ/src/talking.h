@@ -3,11 +3,6 @@
 #include <parameters.h>
 #include <Wire.h>
 
-#define I2C_SLAVE_ADDR 0x08  // Must match master's address
-
-const int NUM_SLIDERS = 24;
-uint8_t sliderValues[NUM_SLIDERS];
-
 int mapToFixedSet(uint8_t input) {
     const int lookup[] = {4, 2, 0, 1, 3};
     int index = input / 51; // 256 / 5 = approx. 51.2
@@ -15,7 +10,23 @@ int mapToFixedSet(uint8_t input) {
     return lookup[index];
   }
 
-void updateSliderValues(){
+void updateSliderValues() {
+    for (int i = 0; i < 6; ++i) {
+        int baseIndex = i * 7;
+        channels[i].sinFreq = sliderValues[baseIndex + 0] / 16.0;
+        channels[i].amp     = sliderValues[baseIndex + 1];
+        channels[i].bias    = 255 - sliderValues[baseIndex + 2];
+        channels[i].phase   = sliderValues[baseIndex + 3] * 4;
+        channels[i].xScale  = sliderValues[baseIndex + 4] * 64;
+        channels[i].yScale  = sliderValues[baseIndex + 5] * 64;
+        channels[i].tScale  = sliderValues[baseIndex + 6];
+    }
+
+    scramble1 = mapToFixedSet(sliderValues[42]);
+    scramble2 = mapToFixedSet(sliderValues[43]);
+}
+
+/*void updateSliderValues(){
     sinFreqR=sliderValues[0]/16;
     amp_R=sliderValues[1];
     bias_R=255-sliderValues[2];
@@ -43,7 +54,8 @@ void updateSliderValues(){
   
    scramble1=mapToFixedSet(sliderValues[21]);
    scramble2=mapToFixedSet(sliderValues[22]);
-}
+}*/
+
 void initSliderValues(){
     for(int i=0;i<NUM_SLIDERS;i++){
         sliderValues[i]=128;

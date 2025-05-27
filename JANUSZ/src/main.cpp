@@ -20,8 +20,8 @@ generateNoiseFrame();
 generateNoiseMask();
 
 applyMaskedConvolution(ghostKernel, mask,blueChannel, 3);
-//applyMaskedConvolution(radicalEdgeKernel, mask,greenChannel, 1, 128);
-applyMaskedConvolution(inversionKernel, mask,blueChannel, 1,128);
+applyMaskedConvolution(radicalEdgeKernel, mask,greenChannel, 1, 128);
+//applyMaskedConvolution(inversionKernel, mask,blueChannel, 1,128);
 //applyMaskedConvolution(blurKernel,mask,redChannel, 9);
 applyMaskedConvolution(gaussianKernel,mask,redChannel, 16);
 

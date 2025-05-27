@@ -61,13 +61,13 @@ void generateNoiseFrame() {
 
     
         // Use high-resolution 16-bit noise and scale it down
-        uint8_t valR = inoise16(x * xScaleR, y * yScaleR, t1) >> 8;
-        uint8_t valG = inoise16(x * xScaleG, y * yScaleG, t2) >> 8;
-        uint8_t valB = inoise16(x * xScaleB, y * yScaleB, t3) >> 8;
+        uint8_t valR = inoise16(x * channels[0].xScale, y * channels[0].yScale, t1) >> 8;
+        uint8_t valG = inoise16(x * channels[1].xScale, y * channels[1].yScale, t2) >> 8;
+        uint8_t valB = inoise16(x * channels[2].xScale, y * channels[2].yScale, t3) >> 8;
   
-int sinValR=awesomeSin8(valR,amp_R,bias_R,phase_R,sinFreqR);
-int sinValG=awesomeSin8(valG,amp_G,bias_G,phase_G,sinFreqG);
-int sinValB=awesomeSin8(valB,amp_B,bias_B,phase_B,sinFreqB);
+int sinValR=awesomeSin8(valR,channels[0].amp,channels[0].bias,channels[0].phase,channels[0].sinFreq);
+int sinValG=awesomeSin8(valG,channels[1].amp,channels[1].bias,channels[1].phase,channels[1].sinFreq);
+int sinValB=awesomeSin8(valB,channels[2].amp,channels[2].bias,channels[2].phase,channels[2].sinFreq);
 
         // Apply sin curve for visual effect (like your sineTable)
         //CRGB targetColor = CRGB(sin8(valR * sinFreqR), sin8(valG * sinFreqG) ,sin8(valB * sinFreqB));
@@ -77,9 +77,9 @@ int sinValB=awesomeSin8(valB,amp_B,bias_B,phase_B,sinFreqB);
       ledsPrev[i] = leds[i];  // Store for next frame     
       }
     }   
-    t1 += tScaleR;  // evolve time
-    t2 += tScaleG;
-    t3 += tScaleB;
+    t1 += channels[0].tScale;  // evolve time
+    t2 += channels[1].tScale;
+    t3 += channels[2].tScale;
   
   }
 void generateNoiseMask() {
@@ -92,13 +92,13 @@ void generateNoiseMask() {
 
     
         // Use high-resolution 16-bit noise and scale it down
-        uint8_t valR = inoise16(x * m_xScaleR, y * m_yScaleR,t1) >> 8;
-        uint8_t valG = inoise16(x * m_xScaleG, y * m_yScaleG,t2) >> 8;
-        uint8_t valB = inoise16(x * m_xScaleB, y * m_yScaleB,t3) >> 8;
+  uint8_t valR = inoise16(x * channels[3].xScale, y * channels[3].yScale, t1) >> 8;
+        uint8_t valG = inoise16(x * channels[4].xScale, y * channels[4].yScale, t2) >> 8;
+        uint8_t valB = inoise16(x * channels[5].xScale, y * channels[5].yScale, t3) >> 8;
   
-int sinValR=awesomeSin8(valR,m_amp_R,m_bias_R,m_phase_R,m_sinFreqR);
-int sinValG=awesomeSin8(valG,m_amp_G,m_bias_G,m_phase_G,m_sinFreqG);
-int sinValB=awesomeSin8(valB,m_amp_B,m_bias_B,m_phase_B,m_sinFreqB);
+int sinValR=awesomeSin8(valR,channels[3].amp,channels[3].bias,channels[3].phase,channels[3].sinFreq);
+int sinValG=awesomeSin8(valG,channels[4].amp,channels[4].bias,channels[4].phase,channels[4].sinFreq);
+int sinValB=awesomeSin8(valB,channels[5].amp,channels[5].bias,channels[5].phase,channels[5].sinFreq);
 
         // Apply sin curve for visual effect (like your sineTable)
         //CRGB targetColor = CRGB(sin8(valR * sinFreqR), sin8(valG * sinFreqG) ,sin8(valB * sinFreqB));
@@ -108,9 +108,9 @@ int sinValB=awesomeSin8(valB,m_amp_B,m_bias_B,m_phase_B,m_sinFreqB);
       maskPrev[i] = mask[i];  // Store for next frame     
       }
     }   
-  t1 += m_tScaleR;  // evolve time
-  t2 += m_tScaleG;
-  t3 += m_tScaleB;
+    t1 += channels[3].tScale;  // evolve time
+    t2 += channels[4].tScale;
+    t3 += channels[5].tScale;
   
   }
 #endif
