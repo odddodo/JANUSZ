@@ -50,6 +50,48 @@ uint8_t awesomeSin8(uint16_t input, uint8_t amplitude = 127, uint8_t bias = 128,
     if (scaled > 255) return 255;
     return static_cast<uint8_t>(scaled);
 }
+CRGB adjustHueShiftRGB(const CRGB& color, uint8_t hueShift) {
+    // Map hueShift (0–255) to angle (0–255)
+    uint8_t sinVal = sin8(hueShift);  // sine wave: 0–255
+    uint8_t cosVal = cos8(hueShift);  // cosine wave: 0–255
+
+    // Convert input to float-ish [0–1] using 8-bit math
+    uint8_t r = color.r;
+    uint8_t g = color.g;
+    uint8_t b = color.b;
+
+    // Mix channels based on sine/cosine
+    uint8_t newR = (r * cosVal + g * sinVal) >> 8;
+    uint8_t newG = (g * cosVal + b * sinVal) >> 8;
+    uint8_t newB = (b * cosVal + r * sinVal) >> 8;
+
+    return CRGB(newR, newG, newB);
+}
+
+CRGB adjustContrast(const CRGB& color, uint8_t contrast) {
+    // contrast: 0 (low) → 128 (neutral) → 255 (high)
+    int16_t factor = (int16_t)contrast - 128;  // -128 to +127
+
+    auto apply = [&](uint8_t component) {
+        int16_t centered = (int16_t)component - 128; // Center around mid-gray
+        int16_t adjusted = centered * (256 + factor * 2) / 256; // Apply contrast scale
+        adjusted += 128;  // Shift back
+        adjusted = constrain(adjusted, 0, 255);  // Clamp safely
+        return (uint8_t)adjusted;
+    };
+
+    return CRGB(apply(color.r), apply(color.g), apply(color.b));
+}
+
+CRGB adjustSaturationRGB(const CRGB& color, uint8_t saturation) {
+    // Compute perceived brightness (grayscale luminance)
+    uint8_t gray = (uint8_t)((uint16_t)color.r * 77 + (uint16_t)color.g * 150 + (uint16_t)color.b * 29) >> 8;
+    // saturation: 0 = grayscale, 255 = original color
+    uint8_t r = lerp8by8(gray, color.r, saturation);
+    uint8_t g = lerp8by8(gray, color.g, saturation);
+    uint8_t b = lerp8by8(gray, color.b, saturation);
+    return CRGB(r, g, b);
+}
 
 void generateNoiseFrame() {
     static uint32_t t1 = 0, t2 = 0, t3 = 0; // Z axes for R/G/B noise
@@ -71,9 +113,9 @@ int sinValB=awesomeSin8(valB,channels[2].amp,channels[2].bias,channels[2].phase,
 
         // Apply sin curve for visual effect (like your sineTable)
         //CRGB targetColor = CRGB(sin8(valR * sinFreqR), sin8(valG * sinFreqG) ,sin8(valB * sinFreqB));
-        CRGB targetColor=CRGB(sinValR,sinValG,sinValB);
+        CRGB targetColor=CRGB(sinValR,sinValG,sinValB);         
               // Apply low-pass filter: blend previous value with current
-      leds[i] = blend(ledsPrev[i], targetColor, smoothing);  // 96 = smoother, lower = slower response
+      leds[i] = blend(ledsPrev[i], targetColor, smoothing);  // 96 = smoother, lower = slower response      
       ledsPrev[i] = leds[i];  // Store for next frame     
       }
     }   
@@ -102,7 +144,9 @@ int sinValB=awesomeSin8(valB,channels[5].amp,channels[5].bias,channels[5].phase,
 
         // Apply sin curve for visual effect (like your sineTable)
         //CRGB targetColor = CRGB(sin8(valR * sinFreqR), sin8(valG * sinFreqG) ,sin8(valB * sinFreqB));
-        CRGB targetColor=CRGB(sinValR,sinValG,sinValB);
+  CRGB targetColor = CRGB(sinValR, sinValG, sinValB);
+  //CRGB targetColor = adjustContrast(rawColor, contrast);  // 128 = neutral
+  //CRGB  saturatedColor=adjustSaturationRGB(targetColor,saturation);
               // Apply low-pass filter: blend previous value with current
       mask[i] = blend(maskPrev[i], targetColor, m_smoothing);  // 96 = smoother, lower = slower response
       maskPrev[i] = mask[i];  // Store for next frame     
@@ -113,5 +157,19 @@ int sinValB=awesomeSin8(valB,channels[5].amp,channels[5].bias,channels[5].phase,
     t3 += channels[5].tScale;
   
   }
+
+  void applyColorCorrection(){
+    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+      for (int x = 0; x < DISPLAY_WIDTH; x++) {
+        uint16_t i = getLedIndexBasic(x, y);  
+        CRGB hueShifted=adjustHueShiftRGB(leds[i],hueShift);
+        CRGB contrasted=adjustContrast(hueShifted,contrast);
+        leds[i]=adjustSaturationRGB(contrasted,saturation);
+
+      }
+    }
+  }
+
+  
 #endif
 

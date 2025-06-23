@@ -13,7 +13,7 @@
 
 #define I2C_SLAVE_ADDR 0x08  // Must match master's address
 
-const int NUM_SLIDERS = 45;
+const int NUM_SLIDERS = 46;
 uint8_t sliderValues[NUM_SLIDERS];
 
 struct ChannelSettings {
@@ -38,6 +38,10 @@ int  smoothing=96;
 
 uint8_t  scramble1=0;
 uint8_t  scramble2=0;
+
+uint8_t contrast=128;
+uint8_t saturation=128;
+uint8_t hueShift=128;
 
 uint8_t  m_smoothing=96;
 

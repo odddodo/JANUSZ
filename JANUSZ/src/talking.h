@@ -22,8 +22,11 @@ void updateSliderValues() {
         channels[i].tScale  = sliderValues[baseIndex + 6];
     }
 
-    scramble1 = mapToFixedSet(sliderValues[42]);
-    scramble2 = mapToFixedSet(sliderValues[43]);
+    //scramble1 = mapToFixedSet(sliderValues[42]);
+    //scramble2 = mapToFixedSet(sliderValues[43]);
+    hueShift=sliderValues[42];
+    contrast=sliderValues[43];
+    saturation=sliderValues[44];
 }
 
 /*void updateSliderValues(){

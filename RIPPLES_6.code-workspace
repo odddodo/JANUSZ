@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"name": "ESP32_server",
+			"path": "../RIPPLES_SERVER/ESP32_server"
+		},
+		{
+			"name": "JANUSZ",
+			"path": "JANUSZ"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"website_h": "c",
+			"espasyncwebserver.h": "c"
+		}
+	}
+}
