@@ -217,10 +217,11 @@ void updateSliderValues()
         channels[i].more = mapRange(sliderValues[baseIndex + 6], 0, 255, 0, 255);
     }
     Serial.println("updating!");
-//rememberSettings();
+
 }
 void rememberSettings(){
     saveArrayToSD(sliderValues,NUM_SLIDERS);
+    Serial.println("saving!");
 }
 void recallSettings(){
       if (!SD.begin(chipSelect)) {
@@ -233,14 +234,15 @@ void recallSettings(){
   // Try to load data
   if (loadArrayFromSD(sliderValues, NUM_SLIDERS)) {
     updateSliderValues();
+    Serial.println("recalling!");
   }
   else{
     for (int i = 0; i < NUM_SLIDERS; i++) {
-      sliderValues[i] = 128;  // Example initial values
+      Serial.println("failed recalling!");
     }
-updateSliderValues();
+//updateSliderValues();
     // Save initialized array
-    saveArrayToSD(sliderValues, NUM_SLIDERS);
+    //saveArrayToSD(sliderValues, NUM_SLIDERS);
   }
 }
 

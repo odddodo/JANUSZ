@@ -7,6 +7,20 @@
 
 CRGB currentColor, otherColor;
 
+// Define XGA-inspired colors
+#define XGA_CYAN CRGB(0, 255, 255)    // Bright cyan
+#define XGA_MAGENTA CRGB(255, 0, 255) // Bright magenta
+#define XGA_YELLOW CRGB(255, 255, 0)  // Bright yellow
+#define XGA_BLACK CRGB(0, 0, 0)       // True black
+#define XGA_WHITE CRGB(255, 255, 255) // True white
+
+// Build a 16-color palette using CMYK + W in a repeated pattern
+const CRGBPalette16 XGAPalette = CRGBPalette16(
+    XGA_CYAN, XGA_CYAN, XGA_CYAN, XGA_CYAN,
+    XGA_MAGENTA, XGA_MAGENTA, XGA_MAGENTA, XGA_MAGENTA,
+    XGA_YELLOW, XGA_YELLOW, XGA_YELLOW, XGA_YELLOW,
+    XGA_WHITE, XGA_WHITE, XGA_BLACK, XGA_BLACK);
+
 extern const TProgmemRGBPalette16 FuckMeHardColors FL_PROGMEM =
     {
         CRGB::HotPink,
@@ -38,6 +52,23 @@ extern const TProgmemRGBPalette16 Zebra FL_PROGMEM =
         CRGB::Black,
         CRGB::GhostWhite,
         CRGB::DarkGrey,
+};
+
+extern const TProgmemRGBPalette16 XGAColors FL_PROGMEM =
+    {
+        CRGB::Black,
+        CRGB::Yellow,
+        CRGB::Magenta,
+        CRGB::Cyan,
+        CRGB::Black,
+        CRGB::Yellow,
+        CRGB::Magenta,
+        CRGB::Cyan,
+        CRGB::Black,
+        CRGB::Yellow,
+        CRGB::Magenta,
+        CRGB::Cyan,
+
 };
 
 extern const TProgmemRGBPalette16 Schmussn FL_PROGMEM =
@@ -75,7 +106,7 @@ CRGBPalette16 palettes[5] = {
     FuckMeHardColors,
     Schmussn,
     Marylin,
-    PartyColors_p};
+    XGAColors};
 
 CRGBPalette16 blendedPalette;
 

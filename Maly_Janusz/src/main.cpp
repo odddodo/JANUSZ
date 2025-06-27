@@ -16,7 +16,6 @@ void setup()
   initTalking();
   recallSettings();
   delay(1000);
-
   matrix.addLayer(&backgroundLayer);
   matrix.begin();
   delay(1000);

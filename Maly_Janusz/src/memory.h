@@ -7,7 +7,7 @@
 
 const int chipSelect = BUILTIN_SDCARD;  // Teensy 4.1 SD slot
 
-const char* filename = "JanuszMemo.bin";
+const char* filename = "remember.bin";
 //const int arraySize = 100;
 
 //float myArray[arraySize];  // Example array of floats
@@ -27,6 +27,10 @@ void initMemory(){
 }
 
 bool saveArrayToSD(uint8_t* data, int len) {
+  if (SD.exists(filename)) {
+    SD.remove(filename);
+  }
+
   File file = SD.open(filename, FILE_WRITE);
   if (!file) {
     Serial.println("Failed to open file for writing.");

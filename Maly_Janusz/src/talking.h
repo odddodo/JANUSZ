@@ -14,16 +14,42 @@ void initSliderValues()
     }
     updateSliderValues();
 }
+#define SAVE_COMMAND_BYTE 0xFF
+#define LOAD_COMMAND_BYTE 0xFE
+
 void receiveEvent(int numBytes)
 {
     int i = 0;
+
+    // Read up to NUM_SLIDERS bytes into sliderValues
     while (Wire2.available() && i < NUM_SLIDERS)
     {
         sliderValues[i++] = Wire2.read();
     }
+
+    // If there's an extra byte, check if it's the save command
+    if (Wire2.available())
+    {
+        uint8_t command = Wire2.read();
+        if (command == SAVE_COMMAND_BYTE)
+        {
+            Serial.println("Save command received!");
+            rememberSettings();  // Implement this function to write to SD
+        }
+        else if (command == SAVE_COMMAND_BYTE)
+        {
+            Serial.println("load command received!");
+            recallSettings();  // Implement this function to write to SD
+        }
+        else
+        {
+            Serial.printf("Unknown extra command byte: 0x%02X\n", command);
+        }
+    }
+
     updateSliderValues();
-   rememberSettings();
-    Serial.println("gotSomething!");
+
+    Serial.println("Received slider values.");
 }
 void requestEvent()
 {
