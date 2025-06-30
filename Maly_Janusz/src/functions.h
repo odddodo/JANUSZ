@@ -64,17 +64,25 @@ float mapRange(int input, int inMin = 0, int inMax = 255, float outMin = 0.025f,
     float scale = (outMax - outMin) / (inMax - inMin);
     return outMin + (input - inMin) * scale;
 }
-
+void duplicatePanelContent() {
+    for (int y = 0; y < 64; y++) {
+        for (int x = 0; x < 64; x++) {
+            rgb24 c = backgroundLayer.readPixel(x, y);
+            backgroundLayer.drawPixel(x, y+64, c);
+        }
+    }
+}
 void update_screen()
 {
     rgb24 *buffer = backgroundLayer.backBuffer();
-    for (int x = 0; x < kMatrixWidth; x++)
+    for (int x = 0; x < PANEL_RES_X; x++)
     {
-        for (int y = 0; y < kMatrixHeight; y++)
+        for (int y = 0; y < PANEL_RES_Y; y++)
         {
-            buffer[kMatrixWidth * y + x] = (rgb24)pixels[kMatrixWidth * y + x];
+            buffer[PANEL_RES_X * y + x] = (rgb24)pixels[PANEL_RES_X * y + x];
         }
     }
+    duplicatePanelContent();
 }
 
 void initParams()
@@ -90,9 +98,9 @@ void initParams()
 
 void generateNoiseFrame()
 {
-    for (int x = 0; x < kMatrixWidth; x++)
+    for (int x = 0; x < PANEL_RES_X; x++)
     {
-        for (int y = 0; y < kMatrixHeight; y++)
+        for (int y = 0; y < PANEL_RES_Y; y++)
         {
             int16_t v = 0;
             int16_t k = 0;
@@ -108,9 +116,9 @@ void generateNoiseFrame()
 
 void generateMaskFrame()
 {
-    for (int x = 0; x < kMatrixWidth; x++)
+    for (int x = 0; x < PANEL_RES_X; x++)
     {
-        for (int y = 0; y < kMatrixHeight; y++)
+        for (int y = 0; y < PANEL_RES_Y; y++)
         {
             int16_t v = 0;
             int16_t k = 0;
@@ -126,9 +134,9 @@ void generateMaskFrame()
 
 void applyConvolution(float kernel[3][3], int channel, bool stripy)
 {
-    for (int x = 0; x < kMatrixWidth; x++)
+    for (int x = 0; x < PANEL_RES_X; x++)
     {
-        for (int y = 0; y < kMatrixHeight; y++)
+        for (int y = 0; y < PANEL_RES_Y; y++)
         {
 
             int16_t m = 0;
@@ -160,9 +168,9 @@ void applySoftConvolution(float kernel[3][3], int channel, bool stripy)
 {
     auto& ch = channels[channel];  // Alias for clarity
 
-    for (int x = 0; x < kMatrixWidth; x++)
+    for (int x = 0; x < PANEL_RES_X; x++)
     {
-        for (int y = 0; y < kMatrixHeight; y++)
+        for (int y = 0; y < PANEL_RES_Y; y++)
         {
             int16_t m = inoise16(
                 x * ch.nsclx,
@@ -245,5 +253,7 @@ void recallSettings(){
     //saveArrayToSD(sliderValues, NUM_SLIDERS);
   }
 }
+
+
 
 #endif

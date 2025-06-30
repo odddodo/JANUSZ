@@ -63,11 +63,7 @@ extern const TProgmemRGBPalette16 XGAColors FL_PROGMEM =
         CRGB::Black,
         CRGB::Yellow,
         CRGB::Magenta,
-        CRGB::Cyan,
-        CRGB::Black,
-        CRGB::Yellow,
-        CRGB::Magenta,
-        CRGB::Cyan,
+        CRGB::Cyan,  
 
 };
 

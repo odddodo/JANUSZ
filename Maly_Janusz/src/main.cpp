@@ -17,7 +17,7 @@ void setup()
   recallSettings();
   delay(1000);
   matrix.addLayer(&backgroundLayer);
-  matrix.begin();
+  matrix.begin();  
   delay(1000);
   backgroundLayer.setBrightness(255);
 }
@@ -25,8 +25,7 @@ void setup()
 void loop()
 {
 
-  while (backgroundLayer.isSwapPending());
-  
+  while (backgroundLayer.isSwapPending());  
   generateNoiseFrame();
   applySoftConvolution(darken, 2, true);
   applySoftConvolution(blur, 3, false);
@@ -35,7 +34,6 @@ void loop()
   applySymmetry1D(pixels, MIRROR_X);
   blendMultiplePalettes(channels[0].mask);
   update_screen();
-
   time_counter++;
   backgroundLayer.swapBuffers(false);
 }
