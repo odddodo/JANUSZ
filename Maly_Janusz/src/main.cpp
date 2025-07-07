@@ -31,7 +31,7 @@ void loop()
   applySoftConvolution(blur, 3, false);
   applySoftConvolution(emboss, 4, true);
   applySoftConvolution(blur, 5, false);
-  applySymmetry1D(pixels, MIRROR_X);
+  //applySymmetry1D(pixels, MIRROR_X);
   blendMultiplePalettes(channels[0].mask);
   update_screen();
   time_counter++;

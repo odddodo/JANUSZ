@@ -11,6 +11,10 @@
 		{
 			"name": "Maly_Janusz",
 			"path": "Maly_Janusz"
+		},
+		{
+			"name": "JANUSZ_IS_TALKING",
+			"path": "JANUSZ_IS_TALKING"
 		}
 	],
 	"settings": {

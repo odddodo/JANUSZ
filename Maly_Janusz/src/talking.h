@@ -4,7 +4,8 @@
 #include <Wire.h>
 #include <functions.h>
 
-
+#define RECEIVE_BYTES 4
+u_int8_t receivedValues[4];
 
 void initSliderValues()
 {
@@ -17,6 +18,22 @@ void initSliderValues()
 #define SAVE_COMMAND_BYTE 0xFF
 #define LOAD_COMMAND_BYTE 0xFE
 
+void receiveEvent(int numBytes){
+    int i = 0;
+
+    // Read up to NUM_SLIDERS bytes into sliderValues
+    while (Wire2.available() && i < RECEIVE_BYTES)
+    {
+        receivedValues[i++] = Wire2.read();
+    }
+
+    channels[0].mask = mapRange(receivedValues[0], 0, 255, 255, 0);
+    channels[1].sinscl = mapRange(receivedValues[1], 0, 255, 0.01f, 0.1f);
+    channels[2].sinscl= mapRange(receivedValues[2], 0, 255, 0.01f, 0.1f);
+    channels[3].sinscl = mapRange(receivedValues[3], 0, 255, 0.01f, 0.1f);
+    Serial.println("limited update!");
+}
+/*
 void receiveEvent(int numBytes)
 {
     int i = 0;
@@ -51,6 +68,7 @@ void receiveEvent(int numBytes)
 
     Serial.println("Received slider values.");
 }
+    */
 void requestEvent()
 {
     Wire2.write(sliderValues, NUM_SLIDERS);

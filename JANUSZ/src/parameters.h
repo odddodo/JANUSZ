@@ -4,12 +4,12 @@
 #include <FastLED.h>
 
 #define DISPLAY_WIDTH 32
-#define DISPLAY_HEIGHT 32
+#define DISPLAY_HEIGHT 16
 #define NUM_PIXELS (DISPLAY_WIDTH * DISPLAY_HEIGHT)
 #define LED_PIN 19
 #define COLOR_ORDER RBG
-#define CHIPSET WS2812B
-#define BRIGHTNESS 128
+#define CHIPSET WS2815
+#define BRIGHTNESS 255
 
 #define I2C_SLAVE_ADDR 0x08  // Must match master's address
 
