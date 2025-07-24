@@ -6,8 +6,8 @@
 
 #define I2C_SLAVE_ADDR 0x08  // Must match master's address
 
-const int NUM_SLIDERS = 42;
-uint8_t sliderValues[NUM_SLIDERS];
+const int NUMSLIDERS = 42;
+uint8_t sliderValues[NUMSLIDERS]; // Local buffer to hold incoming slider values
 
 uint16_t time_counter = 0;
 

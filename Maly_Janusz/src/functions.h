@@ -216,9 +216,9 @@ void updateSliderValues()
     for (int i = 0; i < 6; ++i)
     {
         int baseIndex = i * 7;
-        channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 50.0f, 4000.0f);
-        channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 50.0f, 4000.0f);
-        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.0f, 50.0f);
+        channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 50.0f, 1000.0f);
+        channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 50.0f, 1000.0f);
+        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 500.0f);
         channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.01f, 0.1f);
         channels[i].mask = mapRange(sliderValues[baseIndex + 4], 0, 255, 0, 255);
         channels[i].steepness = mapRange(sliderValues[baseIndex + 5], 0, 255, 0, 255);
@@ -228,7 +228,7 @@ void updateSliderValues()
 
 }
 void rememberSettings(){
-    saveArrayToSD(sliderValues,NUM_SLIDERS);
+    saveArrayToSD(sliderValues,NUMSLIDERS);
     Serial.println("saving!");
 }
 void recallSettings(){
@@ -240,12 +240,12 @@ void recallSettings(){
   Serial.println("SD card ready.");
 
   // Try to load data
-  if (loadArrayFromSD(sliderValues, NUM_SLIDERS)) {
+  if (loadArrayFromSD(sliderValues, NUMSLIDERS)) {
     updateSliderValues();
     Serial.println("recalling!");
   }
   else{
-    for (int i = 0; i < NUM_SLIDERS; i++) {
+    for (int i = 0; i < NUMSLIDERS; i++) {
       Serial.println("failed recalling!");
     }
 //updateSliderValues();

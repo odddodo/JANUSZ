@@ -15,6 +15,10 @@
 		{
 			"name": "JANUSZ_IS_TALKING",
 			"path": "JANUSZ_IS_TALKING"
+		},
+		{
+			"name": "JANUSZ_INTERFACE",
+			"path": "JANUSZ_INTERFACE"
 		}
 	],
 	"settings": {

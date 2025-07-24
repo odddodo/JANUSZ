@@ -1,189 +1,259 @@
-#ifndef webpage_h
-#define webpage_h
+#ifndef WEBPAGE_H
+#define WEBPAGE_H
 #include <ESPAsyncWebServer.h>
 
-// HTML page stored in flash memory
+#define NUMSLIDERS 42
+
 const char htmlPage[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ESP32 Color Wheel</title>
+  <meta charset="UTF-8">
+  <title>Radial Sliders</title>
   <style>
     html, body {
-      margin: 0; 
-      padding: 0; 
-      overflow: hidden; 
-      background: #000; 
-      height: 100%;
+      margin: 0;
+      padding: 0;
       width: 100%;
-      touch-action: none;
-      -webkit-user-select: none; /* Disable text selection on mobile */
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
       user-select: none;
-      position: relative;
+      touch-action: none;
     }
+
     canvas {
-      position: absolute;
-      top: 0; left: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100vw;
       height: 100vh;
+      background: #222;
+      display: block;
       touch-action: none;
-      -webkit-touch-callout: none; /* Disable long press on iOS */
+    }
+
+    #fullscreenBtn, #saveBtn {
+      position: fixed;
+      right: 10px;
+      z-index: 9999;
+      padding: 8px 14px;
+      font-size: 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid white;
+      color: white;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #fullscreenBtn:hover, #saveBtn:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    #fullscreenBtn {
+      top: 10px;
+    }
+
+    #saveBtn {
+      top: 50px;
+      border-color: #0f0;
+      color: #0f0;
+      background-color: rgba(0, 255, 0, 0.1);
+    }
+
+    #saveBtn:hover {
+      background-color: rgba(0, 255, 0, 0.3);
     }
   </style>
 </head>
 <body>
-  <canvas id="wheel"></canvas>
-  <canvas id="overlay"></canvas>
+  <button id="fullscreenBtn">Enter Fullscreen</button>
+  <button id="saveBtn">Save</button>
+  <canvas id="canvas"></canvas>
 
   <script>
-    const wheelCanvas = document.getElementById("wheel");
-    const wheelCtx = wheelCanvas.getContext("2d");
-    const overlayCanvas = document.getElementById("overlay");
-    const overlayCtx = overlayCanvas.getContext("2d");
-    
-    const rippleCount = 3;               // Number of saturation ripples
-const phase = 1;                     // Phase in radians
-const innerRadiusRatio = 0.2;
+    const numSliders = 42;
+    const values = new Array(numSliders).fill(128);
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const saveBtn = document.getElementById("saveBtn");
 
-    let w, h, cx, cy, radius;
-    let selected = { x: 0, y: 0, r: 255, g: 0, b: 0, s:0};
-    let isTouching = false;
+    let width, height, centerX, centerY, maxRadius, minRadius;
+    const handleRadius = 10;
+    let draggingIndex = null;
 
-    function resizeCanvas() {
-      w = wheelCanvas.width = overlayCanvas.width = window.innerWidth;
-      h = wheelCanvas.height = overlayCanvas.height = window.innerHeight;
-      cx = w / 2;
-      cy = h / 2;
-      radius = Math.min(cx, cy) * 0.95;
-      drawWheel();
-      drawDot();
-    }
-    function triangleWave(t, count, phase = 0) {
-  const shiftedT = (t + phase / (2 * Math.PI / count)) % 1;
-  return 1 - Math.abs((shiftedT * count % 1) * 2 - 1);
-}
-function drawWheel() {
-  const img = wheelCtx.createImageData(w, h);
-  const innerRadius = radius * innerRadiusRatio;
+    // WebSocket
+    const ws = new WebSocket("ws://" + location.host + "/ws");
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+    ws.onopen = () => console.log("WebSocket connected.");
+    ws.onerror = (e) => console.error("WebSocket error:", e);
 
-      if (dist >= innerRadius && dist <= radius) {
-        const angle = Math.atan2(dy, dx);
-        const hue = (angle * 180 / Math.PI + 360) % 360;
+    ws.onmessage = function (event) {
+      const data = event.data.split(',').map(v => parseInt(v));
+      if (data.length === numSliders) {
+        for (let i = 0; i < numSliders; i++) {
+          values[i] = data[i];
+        }
+        draw();
+      }
+    };
 
-        const t = (dist - innerRadius) / (radius - innerRadius); // Normalized 0–1
-        const value = 1 - t;
-        const saturation = triangleWave(t, rippleCount, phase);
-
-        const [r, g, b] = hsvToRgb(hue, saturation, value);
-        const i = (y * w + x) * 4;
-        img.data[i] = r;
-        img.data[i + 1] = g;
-        img.data[i + 2] = b;
-        img.data[i + 3] = 255;
+    function sendValues(save = false) {
+      const payload = values.join(",");
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send((save ? "SAVE:" : "") + payload);
       }
     }
-  }
 
-  wheelCtx.putImageData(img, 0, 0);
-}
-
-
-
-
-
-
-
-
-    function drawDot() {
-      overlayCtx.clearRect(0, 0, w, h);
-      overlayCtx.beginPath();
-      overlayCtx.arc(selected.x, selected.y, 10, 0, 2 * Math.PI);
-      overlayCtx.strokeStyle = "#fff";
-      overlayCtx.lineWidth = 3;
-      overlayCtx.shadowColor = "rgba(255,255,255,0.7)";
-      overlayCtx.shadowBlur = 8;
-      overlayCtx.stroke();
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+      centerX = width / 2;
+      centerY = height / 2;
+      maxRadius = Math.min(width, height) * 0.45;
+      minRadius = maxRadius * 0.15;
+      draw();
     }
 
-    function hsvToRgb(h, s, v) {
-      let f = (n, k = (n + h / 60) % 6) =>
-        v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
-      return [f(5) * 255, f(3) * 255, f(1) * 255].map(x => Math.round(x));
-    }
-
-function handlePointer(e) {
-  const rect = wheelCanvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  const dx = x - cx;
-  const dy = y - cy;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  const innerRadius = radius * innerRadiusRatio;
-  if (dist < innerRadius || dist > radius) return;
-
-  const angle = Math.atan2(dy, dx);
-  const hue = (angle * 180 / Math.PI + 360) % 360;
-
-  const t = (dist - innerRadius) / (radius - innerRadius);
-  const value = 1 - t;
-  const saturation = triangleWave(t, rippleCount, phase);
-
-  const [r, g, b] = hsvToRgb(hue, saturation, value);
-selected = { x, y, r, g, b, s:saturation };
-
-  drawDot();
-  sendColorThrottled(r, g, b, saturation);
-}
-
-
-
-    // Throttle function: ensures fetch calls max once every delay ms
-    function throttle(fn, delay) {
-      let lastCall = 0;
-      return (...args) => {
-        const now = Date.now();
-        if (now - lastCall >= delay) {
-          lastCall = now;
-          fn(...args);
-        }
+    function polarToCartesian(angle, radius) {
+      return {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
       };
     }
 
-const sendColorThrottled = throttle((r, g, b, s) => {
-  fetch(`/setcolor?r=${r}&g=${g}&b=${b}&s=${s}`).catch(() => {
-    // Optional: ignore fetch errors
-  });
-}, 100);
+    function getHandleAt(x, y) {
+      for (let i = 0; i < numSliders; i++) {
+        const angle = (i / numSliders) * 2 * Math.PI;
+        const valRadius = minRadius + (values[i] / 255) * (maxRadius - minRadius);
+        const p = polarToCartesian(angle, valRadius);
+        const dx = p.x - x;
+        const dy = p.y - y;
+        if (dx * dx + dy * dy < handleRadius * handleRadius * 2) {
+          return i;
+        }
+      }
+      return null;
+    }
 
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
 
-    overlayCanvas.addEventListener("pointerdown", e => {
-      isTouching = true;
-      handlePointer(e);
+      const points = values.map((val, i) => {
+        const angle = (i / numSliders) * 2 * Math.PI;
+        const radius = minRadius + (val / 255) * (maxRadius - minRadius);
+        return polarToCartesian(angle, radius);
+      });
+
+      // Draw shape
+      ctx.beginPath();
+      for (let i = 0; i < points.length; i++) {
+        const p0 = points[i];
+        const p1 = points[(i + 1) % points.length];
+        const cp = {
+          x: (p0.x + p1.x) / 2,
+          y: (p0.y + p1.y) / 2
+        };
+        if (i === 0) ctx.moveTo(p0.x, p0.y);
+        ctx.quadraticCurveTo(p0.x, p0.y, cp.x, cp.y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw handles
+      for (const p of points) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, handleRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = "#000";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    function updateValueFromPointer(x, y, index) {
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clamped = Math.min(Math.max(dist, minRadius), maxRadius);
+      const normalized = (clamped - minRadius) / (maxRadius - minRadius);
+      values[index] = Math.round(normalized * 255);
+      draw();
+      sendValues();
+    }
+
+    // Interaction
+    canvas.addEventListener("mousedown", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      draggingIndex = getHandleAt(x, y);
     });
 
-    overlayCanvas.addEventListener("pointermove", e => {
-      if (isTouching) handlePointer(e);
+    canvas.addEventListener("mousemove", (e) => {
+      if (draggingIndex !== null) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        updateValueFromPointer(x, y, draggingIndex);
+      }
     });
 
-    overlayCanvas.addEventListener("pointerup", () => {
-      isTouching = false;
-    });
+    canvas.addEventListener("mouseup", () => { draggingIndex = null; });
+    canvas.addEventListener("mouseleave", () => { draggingIndex = null; });
 
-    overlayCanvas.addEventListener("pointercancel", () => {
-      isTouching = false;
-    });
+    canvas.addEventListener("touchstart", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const y = e.touches[0].clientY - rect.top;
+      draggingIndex = getHandleAt(x, y);
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (draggingIndex !== null) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const x = e.touches[0].clientX - rect.left;
+        const y = e.touches[0].clientY - rect.top;
+        updateValueFromPointer(x, y, draggingIndex);
+      }
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", () => { draggingIndex = null; });
 
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
+
+    // Fullscreen toggle
+    fullscreenBtn.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().then(() => {
+          fullscreenBtn.innerText = "Exit Fullscreen";
+        });
+      } else {
+        document.exitFullscreen().then(() => {
+          fullscreenBtn.innerText = "Enter Fullscreen";
+        });
+      }
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      fullscreenBtn.innerText = document.fullscreenElement ? "Exit Fullscreen" : "Enter Fullscreen";
+    });
+
+    // Save button logic
+    saveBtn.addEventListener("click", () => {
+      sendValues(true);
+    });
   </script>
 </body>
 </html>
