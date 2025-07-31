@@ -53,10 +53,12 @@ const char index_html[] PROGMEM = R"rawliteral(
   const fullscreenBtn = document.getElementById('fullscreen-btn');
 
   let sliders = [];
+  let lastSliderValues = [];
   let center = { x: 0, y: 0 };
   let innerRadius = 50;
   let outerRadius = 0;
   let draggingIndex = -1;
+  let lastSent = 0;
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -68,7 +70,10 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
 
   function setup() {
-    for (let i = 0; i < NUM_SLIDERS; i++) sliders[i] = 0.5;
+    for (let i = 0; i < NUM_SLIDERS; i++) {
+      sliders[i] = 0.5;
+      lastSliderValues[i] = -1;
+    }
     resize();
   }
 
@@ -140,6 +145,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     const r = Math.max(innerRadius, Math.min(outerRadius, projection));
     sliders[index] = (r - innerRadius) / (outerRadius - innerRadius);
     draw();
+    sendSliderValues(); // trigger sending updated values
   }
 
   function getEventPos(evt) {
@@ -188,7 +194,6 @@ const char index_html[] PROGMEM = R"rawliteral(
 
   window.addEventListener('resize', resize);
 
-  // Fullscreen button logic
   fullscreenBtn.addEventListener('click', () => {
     const el = document.documentElement;
     if (!document.fullscreenElement) {
@@ -202,11 +207,24 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
   });
 
+  function sendSliderValues() {
+    const now = Date.now();
+    if (now - lastSent < 50) return; // throttle to max 20 fps
+    lastSent = now;
+    for (let i = 0; i < NUM_SLIDERS; i++) {
+      const val = Math.round(sliders[i] * 100);
+      if (val !== lastSliderValues[i]) {
+        lastSliderValues[i] = val;
+        fetch(`/slider?i=${i}&v=${val}`).catch(console.error);
+      }
+    }
+  }
+
   setup();
 </script>
 </body>
 </html>
-
 )rawliteral";
+
 
 #endif
