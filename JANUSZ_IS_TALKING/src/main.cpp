@@ -39,7 +39,7 @@ void sendSliderValuesToClient(AsyncWebSocketClient *client) {
   while (i < NUMSLIDERS && (millis() - start < 50)) {
     if (Wire.available()) {
       buffer[i] = Wire.read();          // Read byte from I2C
-      computedChecksum += buffer[i];    // Update checksum
+      computedChecksum ^= buffer[i];    // Update checksum
       i++;
     } else {
       delay(1);                         // Brief pause to allow more data to arrive
@@ -124,7 +124,7 @@ void parseAndSendValues(String message, bool triggerSave = false) {
 
   for (int i = 0; i < NUMSLIDERS; i++) {
     Wire.write(parsed[i]);
-    checksum += parsed[i];
+    checksum ^= parsed[i];
     sliderValues[i] = parsed[i];
     lastSent[i] = parsed[i]; // Update last sent values
   }

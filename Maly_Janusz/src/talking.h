@@ -38,7 +38,7 @@ void receiveEvent(int numBytes) {
   uint8_t receivedChecksum = Wire2.read();
 uint8_t calculatedChecksum = 0;
 for (int i = 0; i < NUMSLIDERS; i++) {
-  calculatedChecksum += buffer[i];
+  calculatedChecksum ^= buffer[i];
 }
 
 
@@ -73,9 +73,11 @@ void initTalking() {
     Serial.begin(115200);
 
     // Use Wire (or Wire1 / Wire2 depending on platform)
-    Wire2.begin(I2C_SLAVE_ADDR);
+   
 #//if defined(ARDUINO_ARCH_ESP32)
-    Wire2.setSCL(24);  // Or your actual SCL pin
+    Wire2.begin(I2C_SLAVE_ADDR);
+    //Wire2.setClock(400000);
+        Wire2.setSCL(24);  // Or your actual SCL pin
     Wire2.setSDA(25);  // Or your actual SDA pin
 //#endif
 

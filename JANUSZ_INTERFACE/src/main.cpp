@@ -1,12 +1,12 @@
 #include <Arduino.h>
+
 #include <WiFi.h>
-#include <website.h>
 #include <talking.h>
 #include <parameters.h>
 
 AsyncWebServer server(80);
 
-int sliderValues[SLIDERSCOUNT] = {0};
+
 unsigned long lastDebugTime = 0;
 
 void debug()
@@ -29,8 +29,10 @@ void debug()
 void setup()
 {
  
-initSerial();
+  initSerial();
+  init_values();
   init_talking();
+  
 
   // Start WiFi in AP mode
   WiFi.softAP(ssid, password);
@@ -41,24 +43,42 @@ initSerial();
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/html", index_html); });
   // Endpoint to receive slider updates
-  server.on("/slider", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    if (request->hasParam("i") && request->hasParam("v")) {
-      int index = request->getParam("i")->value().toInt();
-      int value = request->getParam("v")->value().toInt();
-      if (index >= 0 && index < SLIDERSCOUNT) {
-        sliderValues[index] = value;
-      }
-      request->send(200, "text/plain", "OK");
-    } else {
-      request->send(400, "text/plain", "Missing parameters");
-    } });
+server.on("/sliders", HTTP_POST, [](AsyncWebServerRequest *request){},
+  NULL, // no upload handler
+  [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    // Parse JSON body
+    String body;
+    for (size_t i = 0; i < len; i++) body += (char)data[i];
+
+    DynamicJsonDocument doc(1024); // enough for 42 numbers
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      request->send(400, "text/plain", "Invalid JSON");
+      return;
+    }
+
+    JsonArray arr = doc.as<JsonArray>();
+    if (arr.size() != SLIDERSCOUNT) {
+      request->send(400, "text/plain", "Wrong number of sliders");
+      return;
+    }
+
+    for (int i = 0; i < SLIDERSCOUNT; i++) {
+      sliderValues[i] = arr[i].as<int>();
+      // optionally also copy to dataArray if needed:
+      // dataArray[i] = sliderValues[i];
+    }
+
+    request->send(200, "text/plain", "OK");
+  }
+);
 
   server.begin();
 }
 
 void loop()
 {
-  debug();
+  //debug();
   talkI2C();
 }

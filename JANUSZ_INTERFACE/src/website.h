@@ -207,18 +207,21 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
   });
 
-  function sendSliderValues() {
-    const now = Date.now();
-    if (now - lastSent < 50) return; // throttle to max 20 fps
-    lastSent = now;
-    for (let i = 0; i < NUM_SLIDERS; i++) {
-      const val = Math.round(sliders[i] * 100);
-      if (val !== lastSliderValues[i]) {
-        lastSliderValues[i] = val;
-        fetch(`/slider?i=${i}&v=${val}`).catch(console.error);
-      }
-    }
-  }
+function sendSliderValues() {
+  const now = Date.now();
+  if (now - lastSent < 50) return; // throttle to max 20 fps
+  lastSent = now;
+
+  // Convert normalized [0.0–1.0] values into 0–255 integers
+  const values = sliders.map(v => Math.round(v * 255));
+
+  fetch("/sliders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(values)
+  }).catch(console.error);
+}
+
 
   setup();
 </script>

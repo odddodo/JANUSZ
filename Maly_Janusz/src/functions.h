@@ -87,12 +87,16 @@ void update_screen()
 
 void initParams()
 {
+    Serial.println("initializing parameters...");
     for (int i = 0; i < 6; ++i)
     {
-        channels[i].nsclx = 3200.0f;
-        channels[i].nscly = 3200.0f;
-        channels[i].tscl = 500.0f;
+        channels[i].nsclx = 1000.0f;
+        channels[i].nscly = 1000.0f;
+        channels[i].tscl = 100.0f;
         channels[i].sinscl = 0.025f;
+        channels[i].mask = 128.0f;
+        channels[i].steepness = 128.0f;
+        channels[i].more = 128.0f;
     }
 }
 
@@ -224,7 +228,7 @@ void updateSliderValues()
         channels[i].steepness = mapRange(sliderValues[baseIndex + 5], 0, 255, 0, 255);
         channels[i].more = mapRange(sliderValues[baseIndex + 6], 0, 255, 0, 255);
     }
-    Serial.println("updating!");
+    //Serial.println("updating!");
 
 }
 void rememberSettings(){
@@ -243,6 +247,9 @@ void recallSettings(){
   if (loadArrayFromSD(sliderValues, NUMSLIDERS)) {
     updateSliderValues();
     Serial.println("recalling!");
+        for (int i = 0; i < NUMSLIDERS; i++) {
+      Serial.println(sliderValues[i]);
+    }
   }
   else{
     for (int i = 0; i < NUMSLIDERS; i++) {
