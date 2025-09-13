@@ -5,9 +5,12 @@
 #include <parameters.h>
 #include <convolution.h>
 #include <talking.h>
+#include <steppers.h>
+
 
 void setup()
 {
+  initSteppers();
   delay(1000);
   initMemory();
   delay(1000);
@@ -30,14 +33,15 @@ void loop()
     updateSliderValues();  // Your function
     dataReady = false;
   }
-  generateNoiseFrame();
-  //applySoftConvolution(darken, 2, true);
-  //applySoftConvolution(blur, 3, false);
+  generateNoiseFrame(0,1);
   applySoftConvolution(emboss, 4, true);
-  applySoftConvolution(blur, 3, false);
+  applySoftConvolution(blur, 3, true);
+  
   //applySymmetry1D(pixels, MIRROR_X);
-  blendMultiplePalettes(channels[0].mask);
+  blendMultiplePalettes(2);
   update_screen();
   time_counter++;
   backgroundLayer.swapBuffers(false);
+
+  updateSteppers(time_counter);
 }

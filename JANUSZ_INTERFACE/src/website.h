@@ -7,7 +7,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Radial Sliders</title>
+  <title>JANUSZ</title>
   <style>
     html, body {
       margin: 0;
@@ -27,7 +27,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       top: 10px;
       right: 10px;
       background: rgba(255, 255, 255, 0.1);
-      color: white;
+      color: rgb(255, 255, 255);
       border: 1px solid white;
       border-radius: 8px;
       padding: 8px 12px;
@@ -40,17 +40,38 @@ const char index_html[] PROGMEM = R"rawliteral(
     #fullscreen-btn:hover {
       background: rgba(255, 255, 255, 0.2);
     }
+
+    #save-btn {
+      position: fixed;
+      top: 50px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgb(255, 255, 255);
+      border: 1px solid white;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 10;
+      transition: background 0.3s;
+    }
+
+    #save-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
   </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
 <button id="fullscreen-btn">Go Fullscreen</button>
+<button id="save-btn">Save</button>
 
 <script>
-  const NUM_SLIDERS = 42;
+  const NUM_SLIDERS = 30;
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const fullscreenBtn = document.getElementById('fullscreen-btn');
+  const saveBtn = document.getElementById('save-btn');
 
   let sliders = [];
   let lastSliderValues = [];
@@ -59,6 +80,8 @@ const char index_html[] PROGMEM = R"rawliteral(
   let outerRadius = 0;
   let draggingIndex = -1;
   let lastSent = 0;
+
+  const groupColors = ["red", "orange", "blue", "yellow", "magenta"]; // 5 groups of 6
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -76,6 +99,23 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
     resize();
   }
+
+  // ---------------------------
+  // Load sliders from master/slave
+  // ---------------------------
+  function loadSliders() {
+    fetch("/get_sliders")
+      .then(response => response.json())
+      .then(values => {
+        for (let i = 0; i < NUM_SLIDERS; i++) {
+          sliders[i] = values[i] / 255; // normalize 0–1
+        }
+        draw(); // update canvas
+      })
+      .catch(err => console.error("Failed to load sliders:", err));
+  }
+
+  window.addEventListener('load', loadSliders);
 
   function getHandlePos(i, v) {
     const angle = (2 * Math.PI * i) / NUM_SLIDERS;
@@ -109,10 +149,11 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
 
   function drawHandles(points) {
-    for (const p of points) {
+    for (let i = 0; i < points.length; i++) {
+      const groupIndex = Math.floor(i / 6); // 0–4
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = 'white';
+      ctx.arc(points[i].x, points[i].y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = groupColors[groupIndex];
       ctx.fill();
     }
   }
@@ -207,27 +248,33 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
   });
 
-function sendSliderValues() {
-  const now = Date.now();
-  if (now - lastSent < 50) return; // throttle to max 20 fps
-  lastSent = now;
+  saveBtn.addEventListener('click', () => {
+    fetch("/save", { method: "POST" })
+      .then(() => {
+        console.log("Save triggered");
+        loadSliders(); // refresh sliders after saving
+      })
+      .catch(console.error);
+  });
 
-  // Convert normalized [0.0–1.0] values into 0–255 integers
-  const values = sliders.map(v => Math.round(v * 255));
+  function sendSliderValues() {
+    const now = Date.now();
+    if (now - lastSent < 50) return; // throttle to max 20 fps
+    lastSent = now;
 
-  fetch("/sliders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(values)
-  }).catch(console.error);
-}
+    const values = sliders.map(v => Math.round(v * 255));
 
+    fetch("/sliders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values)
+    }).catch(console.error);
+  }
 
   setup();
 </script>
 </body>
 </html>
 )rawliteral";
-
 
 #endif

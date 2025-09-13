@@ -51,6 +51,7 @@ for (int i = 0; i < NUMSLIDERS; i++) {
       if (command == SAVE_COMMAND_BYTE) {
         // Handle save logic
         saveTriggered = true;
+        Serial.println("saving triggered");
       }
     }
   } else {

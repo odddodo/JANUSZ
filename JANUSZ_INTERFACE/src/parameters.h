@@ -8,7 +8,7 @@
 #define I2C_FREQ 400000   // 400 kHz Fast Mode
 #define I2C_SLAVE_ADDR 0x08 // Change to your slave address
 
-#define SLIDERSCOUNT 42
+#define SLIDERSCOUNT 30
 
 const char* ssid = "JANUSZ_INTERFACE";
 const char* password = "Hello_Janusz";

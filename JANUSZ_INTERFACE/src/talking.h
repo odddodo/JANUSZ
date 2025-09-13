@@ -6,14 +6,26 @@
 #include <Arduino.h>
 #include <website.h>
 
-uint8_t dataArray[SLIDERSCOUNT]; // Your 42 values
+#define SAVE_COMMAND_BYTE 0xFF
+uint8_t dataArray[SLIDERSCOUNT]; // 
 uint8_t lastSentArray[SLIDERSCOUNT];
 uint8_t checksum;
 
 #define TRANSMIT_INTERVAL_MS 100 // How often to send data
 unsigned long lastTransmitTime = 0;
 
-uint8_t calculateChecksum(const uint8_t *data, size_t length)
+String slidersToJSON() {
+    DynamicJsonDocument doc(1024); // adjust size if needed
+    JsonArray arr = doc.to<JsonArray>();
+
+    for (int i = 0; i < SLIDERSCOUNT; i++) {
+        arr.add(sliderValues[i]);
+    }
+
+    String json;
+    serializeJson(doc, json);
+} 
+    uint8_t calculateChecksum(const uint8_t *data, size_t length)
 {
     uint8_t cs = 0;
     for (size_t i = 0; i < length; i++)
@@ -22,10 +34,41 @@ uint8_t calculateChecksum(const uint8_t *data, size_t length)
     }
     return cs;
 }
+bool requestSlidersFromSlave() {
+    Wire.requestFrom(I2C_SLAVE_ADDR, SLIDERSCOUNT + 1); // sliders + checksum
+    if (Wire.available() < SLIDERSCOUNT + 1) {
+        Serial.println("Not enough data received from slave");
+        return false;
+    }
+
+    uint8_t buffer[SLIDERSCOUNT];
+    for (int i = 0; i < SLIDERSCOUNT; i++) {
+        buffer[i] = Wire.read();
+    }
+
+    uint8_t receivedChecksum = Wire.read();
+
+    // Verify checksum
+    uint8_t calculatedChecksum = calculateChecksum(buffer, SLIDERSCOUNT);
+    if (calculatedChecksum != receivedChecksum) {
+        Serial.println("Checksum mismatch from slave!");
+        return false;
+    }
+
+    // Update local arrays
+    memcpy(sliderValues, buffer, SLIDERSCOUNT);
+    memcpy(dataArray, buffer, SLIDERSCOUNT);
+    memcpy(lastSentArray, buffer, SLIDERSCOUNT); // optional: treat as already sent
+    Serial.println("Sliders updated from slave");
+
+    return true;
+}
+
 
 void init_talking()
 {
     Wire.begin(I2C_SDA, I2C_SCL); // Master mode, set freq
+    requestSlidersFromSlave();
 }
 void initSerial()
 {
@@ -42,7 +85,7 @@ bool hasChanged()
     }
     return false;
 }
-void talkI2C()
+void talkI2C(bool sendSave = false, bool sendLoad = false)
 {
     update_values();
     unsigned long now = millis();
@@ -55,6 +98,13 @@ void talkI2C()
     Wire.beginTransmission(I2C_SLAVE_ADDR);
     Wire.write(dataArray, SLIDERSCOUNT);
     Wire.write(checksum);
+
+    if (sendSave) {
+        Wire.write(SAVE_COMMAND_BYTE);
+    } else if (sendLoad) {
+        //Wire.write(LOAD_COMMAND_BYTE);
+    }
+
     uint8_t err = Wire.endTransmission();
 
     if (err == 0)

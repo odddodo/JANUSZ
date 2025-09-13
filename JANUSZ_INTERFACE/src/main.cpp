@@ -4,6 +4,8 @@
 #include <talking.h>
 #include <parameters.h>
 
+
+
 AsyncWebServer server(80);
 
 
@@ -73,7 +75,19 @@ server.on("/sliders", HTTP_POST, [](AsyncWebServerRequest *request){},
     request->send(200, "text/plain", "OK");
   }
 );
+server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
+    talkI2C(true, false); // send sliders + checksum + SAVE_COMMAND_BYTE
+    request->send(200, "text/plain", "Save triggered");
+});
+server.on("/get_sliders", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (!requestSlidersFromSlave()) {
+        request->send(500, "application/json", "{\"error\":\"Failed to read from slave\"}");
+        return;
+    }
 
+    String json = slidersToJSON();
+    request->send(200, "application/json", json);
+});
   server.begin();
 }
 

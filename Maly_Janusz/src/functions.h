@@ -100,25 +100,28 @@ void initParams()
     }
 }
 
-void generateNoiseFrame()
+void generateNoiseFrame(int ch_X, int ch_Y)
 {
+    auto& CHX = channels[ch_X];
+    auto& CHY = channels[ch_Y];
+
     for (int x = 0; x < PANEL_RES_X; x++)
     {
         for (int y = 0; y < PANEL_RES_Y; y++)
         {
             int16_t v = 0;
             int16_t k = 0;
-            v = inoise16(x * channels[0].nsclx, y * channels[0].nscly, time_counter * channels[0].tscl);
-            k = inoise16(x * channels[1].nsclx, y * channels[1].nscly, time_counter * channels[1].tscl);
-            uint8_t v_res = v * channels[0].sinscl;
-            uint8_t k_res = k * channels[1].sinscl;
-            currentColor = ColorFromPalette(blendedPalette, (((sin8(v_res) * cos8(v_res)) / (1+channels[0].mask)) + ((sin8(k_res) * cos8(k_res)) / (1+ channels[1].mask))) / 2);
+            v = inoise16(x * CHX .nsclx, y * CHX .nscly, time_counter * CHX .tscl);
+            k = inoise16(x * CHY.nsclx, y * CHY.nscly, time_counter * CHY.tscl);
+            uint8_t v_res = v * CHX .sinscl;
+            uint8_t k_res = k * CHY.sinscl;
+            currentColor = ColorFromPalette(blendedPalette, (((sin8(v_res) * cos8(v_res)) / (1+CHX .mask)) + ((sin8(k_res) * cos8(k_res)) / (1+ CHY.mask))) / 2);
             pixels[x + PANEL_RES_X * y] = currentColor;
         }
     }
 }
 
-void generateMaskFrame()
+void generateMaskFrame(int ch_X, int ch_Y)
 {
     for (int x = 0; x < PANEL_RES_X; x++)
     {
@@ -126,10 +129,10 @@ void generateMaskFrame()
         {
             int16_t v = 0;
             int16_t k = 0;
-            v = inoise16(x * channels[0].nsclx, y * channels[0].nscly, time_counter * channels[0].tscl);
-            k = inoise16(x * channels[1].nsclx, y * channels[1].nscly, time_counter * channels[1].tscl);
-            uint8_t v_res = v * channels[0].sinscl;
-            uint8_t k_res = k * channels[1].sinscl;
+            v = inoise16(x * channels[ch_X].nsclx, y * channels[ch_X].nscly, time_counter * channels[ch_X].tscl);
+            k = inoise16(x * channels[ch_Y].nsclx, y * channels[ch_Y].nscly, time_counter * channels[ch_Y].tscl);
+            uint8_t v_res = v * channels[ch_X].sinscl;
+            uint8_t k_res = k * channels[ch_Y].sinscl;
             currentColor = ColorFromPalette(Zebra, (((sin8(v_res) * cos8(v_res)) / 255) + ((sin8(k_res) * cos8(k_res)) / 255)) / 2);
             mask[x + PANEL_RES_X * y] = currentColor;
         }
@@ -217,16 +220,16 @@ void applySoftConvolution(float kernel[3][3], int channel, bool stripy)
 }
 void updateSliderValues()
 {
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 5; ++i)
     {
-        int baseIndex = i * 7;
+        int baseIndex = i * 6;
         channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 50.0f, 1000.0f);
         channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 50.0f, 1000.0f);
         channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 500.0f);
         channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.01f, 0.1f);
         channels[i].mask = mapRange(sliderValues[baseIndex + 4], 0, 255, 0, 255);
         channels[i].steepness = mapRange(sliderValues[baseIndex + 5], 0, 255, 0, 255);
-        channels[i].more = mapRange(sliderValues[baseIndex + 6], 0, 255, 0, 255);
+        
     }
     //Serial.println("updating!");
 
