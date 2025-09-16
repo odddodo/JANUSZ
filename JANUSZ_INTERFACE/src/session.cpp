@@ -14,17 +14,40 @@ String SessionManager::generateToken() {
     return String(buf);
 }
 
-// Expire logic: handles countdown and switching
-void SessionManager::expireIfNeeded() {
-    unsigned long now = millis();
-
-    // If countdown expired → promote waiting user
-    if (!waitingToken.isEmpty() && (now - countdownStart > countdownDuration)) {
-        Serial.println("Countdown expired → switching active user");
+void SessionManager::promoteWaiting(unsigned long now) {
+    if (!waitingToken.isEmpty()) {
+        Serial.println("Promoting waiting user to active");
         activeToken = waitingToken;
         lastActive = now;
         waitingToken = "";
         countdownStart = 0;
+    } else {
+        // No one waiting → simply clear active
+        activeToken = "";
+        countdownStart = 0;
+    }
+}
+
+void SessionManager::expireIfNeeded() {
+    unsigned long now = millis();
+
+    // If someone is waiting, two things can end the current active session:
+    // 1) Countdown expires
+    // 2) Active user stops heartbeating/being active for > heartbeatGraceMs
+    if (!waitingToken.isEmpty()) {
+        // If active vanished (no recent activity/heartbeat), switch early
+        if (!activeToken.isEmpty() && (now - lastActive > heartbeatGraceMs)) {
+            Serial.println("No heartbeat from active user → early switch");
+            promoteWaiting(now);
+            return;
+        }
+
+        // Normal countdown expiry
+        if (countdownStart && (now - countdownStart > countdownDuration)) {
+            Serial.println("Countdown expired → switching");
+            promoteWaiting(now);
+            return;
+        }
     }
 }
 
@@ -34,7 +57,7 @@ void SessionManager::registerEndpoints(AsyncWebServer& server) {
         expireIfNeeded();
         unsigned long now = millis();
 
-        // No active session
+        // If no active session, grant immediately
         if (activeToken.isEmpty()) {
             activeToken = generateToken();
             lastActive = now;
@@ -46,49 +69,81 @@ void SessionManager::registerEndpoints(AsyncWebServer& server) {
             return;
         }
 
-        // Already active, but check if this request is from the active user
-        String token = request->header("X-Token");
-        if (token == activeToken) {
-            // Still active
+        // Identify caller (may be active or waiting)
+        String callerToken = request->header("X-Token");
+
+        // Active asking for status
+        if (callerToken == activeToken) {
+            lastActive = now; // touch
             if (waitingToken.isEmpty()) {
-                // No countdown if no one is waiting
+                // No one waiting → no countdown
                 String body = String("{\"active\":true,\"token\":\"") + activeToken + "\",\"timeLeft\":0}";
                 request->send(200, "application/json", body);
             } else {
-                // Countdown is running
+                // Countdown running
                 unsigned long elapsed = now - countdownStart;
                 unsigned long timeLeft = (elapsed < countdownDuration) ? (countdownDuration - elapsed) / 1000 : 0;
-
-               String body = String("{\"active\":true,\"token\":\"") + activeToken + "\",\"timeLeft\":" + String(timeLeft) + "}";
-
+                String body = String("{\"active\":true,\"token\":\"") + activeToken + "\",\"timeLeft\":" + String(timeLeft) + "}";
                 request->send(200, "application/json", body);
             }
             return;
         }
 
-        // If already active but no waiting → make this client the waiting user
+        // Not active
         if (waitingToken.isEmpty()) {
+            // First waiter arrives → start countdown
             waitingToken = generateToken();
             countdownStart = now;
 
-           String body = String("{\"active\":false,\"token\":\"") + waitingToken + "\",\"timeLeft\":" + String(countdownDuration / 1000) + "}";
-
+            String body = String("{\"active\":false,\"token\":\"") + waitingToken + "\",\"timeLeft\":" + String(countdownDuration / 1000) + "}";
             request->send(200, "application/json", body);
 
-            Serial.println("New waiting user queued: " + waitingToken);
+            Serial.println("Waiting user queued: " + waitingToken);
             return;
         }
 
-        // Already waiting → update countdown
+        // Already have a waiting user → report remaining time to anyone else
         unsigned long elapsed = now - countdownStart;
         unsigned long timeLeft = (elapsed < countdownDuration) ? (countdownDuration - elapsed) / 1000 : 0;
-       String body = String("{\"active\":false,\"token\":\"") + waitingToken + "\",\"timeLeft\":" + String(timeLeft) + "}";
-
+        String body = String("{\"active\":false,\"token\":\"") + waitingToken + "\",\"timeLeft\":" + String(timeLeft) + "}";
         request->send(200, "application/json", body);
+    });
+
+    // --- HEARTBEAT ENDPOINT (active user pings every few seconds) ---
+    server.on("/heartbeat", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        String t = request->header("X-Token");
+        if (t == activeToken) {
+            lastActive = millis(); // refresh last active time
+            request->send(200, "text/plain", "OK");
+        } else {
+            request->send(403, "text/plain", "Invalid or not active");
+        }
+    });
+
+    // --- RELEASE ENDPOINT (called on page/tab close via sendBeacon) ---
+    // Uses a POST with query param ?t=<token> (sendBeacon can't set headers)
+    server.on("/release", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        String t = "";
+        if (request->hasParam("t", true)) {
+            t = request->getParam("t", true)->value();
+        }
+        // Also accept header if present
+        if (t.isEmpty()) {
+            t = request->header("X-Token");
+        }
+
+        if (!t.isEmpty() && t == activeToken) {
+            unsigned long now = millis();
+            Serial.println("Active user released session");
+            promoteWaiting(now); // instantly hand over if someone is waiting
+            request->send(200, "text/plain", "released");
+        } else {
+            request->send(403, "text/plain", "not active or bad token");
+        }
     });
 }
 
-// Validate token & refresh activity timer
+// Validate token & refresh activity timer (used by write endpoints)
 bool SessionManager::isValid(const String& token) {
     expireIfNeeded();
 
@@ -104,4 +159,5 @@ void SessionManager::reset() {
     activeToken = "";
     waitingToken = "";
     countdownStart = 0;
+    lastActive = 0;
 }
