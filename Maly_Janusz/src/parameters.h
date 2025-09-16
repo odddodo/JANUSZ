@@ -18,7 +18,6 @@ float tscl;
 float sinscl;
 float mask;
 float steepness;
-float more;
 };
 
 ChannelSettings channels[5]; 

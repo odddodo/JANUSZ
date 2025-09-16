@@ -6,6 +6,8 @@
 #include "colorpalettes.h"
 
 CRGB currentColor, otherColor;
+uint8_t phaseOffset = 0; // 0–255
+uint8_t hueShiftINDX = 0; // 0–255
 
 // Define XGA-inspired colors
 #define XGA_CYAN CRGB(0, 255, 255)    // Bright cyan
@@ -14,7 +16,9 @@ CRGB currentColor, otherColor;
 #define XGA_BLACK CRGB(0, 0, 0)       // True black
 #define XGA_WHITE CRGB(255, 255, 255) // True white
 
-const uint8_t numPalettes = 9;
+const uint8_t numPalettes = 7;
+
+
 extern const TProgmemRGBPalette16 Zebra FL_PROGMEM =
     {
         CRGB::Black,
@@ -41,7 +45,7 @@ const CRGBPalette16 XGAPalette = CRGBPalette16(
     XGA_YELLOW, XGA_YELLOW, XGA_YELLOW, XGA_YELLOW,
     XGA_WHITE, XGA_WHITE, XGA_BLACK, XGA_BLACK);
 
-extern const TProgmemRGBPalette16 FuckMeHardColors FL_PROGMEM =
+extern const TProgmemRGBPalette16 HugMeColors FL_PROGMEM =
     {
         CRGB::HotPink,
         CRGB::Olive,
@@ -146,6 +150,26 @@ extern const TProgmemRGBPalette16 Marylin FL_PROGMEM =
         CRGB::OrangeRed ,
 
 };
+extern const TProgmemRGBPalette16 Trans FL_PROGMEM =
+    {
+        CRGB::CadetBlue,
+        CRGB::HotPink,
+        CRGB::White,
+        CRGB::HotPink,
+        CRGB::CadetBlue,
+         CRGB::HotPink,
+        CRGB::White,
+        CRGB::HotPink,
+                CRGB::CadetBlue,
+        CRGB::HotPink,
+        CRGB::White,
+        CRGB::HotPink,
+        CRGB::CadetBlue,
+         CRGB::HotPink,
+        CRGB::White,
+        CRGB::HotPink,
+
+};
 extern const TProgmemRGBPalette16 Italy FL_PROGMEM =
     {
        
@@ -213,39 +237,68 @@ extern const TProgmemRGBPalette16 Smoothie FL_PROGMEM =
 CRGBPalette16 palettes[numPalettes] = {
     Zebra,
     Hello,
-    Smoothie,    
-    Schmussn,
-    Marylin,
-    XGAColors,
+    Smoothie,
+    XGAColors,   
     Arctic,
     Italy,
-    FuckMeHardColors,
+    HugMeColors,
     };
+
 
 CRGBPalette16 blendedPalette;
 
-void blendMultiplePalettes(int channel)
-{
-    uint8_t blendIndex=channels[channel].mask;
-
-  
-  const uint8_t blendRange = 256 / (numPalettes - 1); // 64 steps
-
-  uint8_t indexA = blendIndex / blendRange;
-  uint8_t indexB = min(indexA + 1, numPalettes - 1);   // Prevent overflow
-  uint8_t blendAmount = (blendIndex % blendRange) * 4; // Scale to 0–255
-
-  for (int i = 0; i < 16; i++)
-  {
-    CRGB colorA = palettes[indexA][i];
-    CRGB colorB = palettes[indexB][i];
-    blendedPalette[i] = blend(colorA, colorB, blendAmount);
-  }
+CRGB shiftHue(const CRGB& color, uint8_t hueShift) {
+    CHSV hsv=  rgb2hsv_approximate(color);  // FastLED built-in
+    hsv.hue += hueShift; 
+    CRGB c;
+    hsv2rgb_rainbow(hsv,c)  ;          // Wraps automatically
+    return c;
 }
+CRGBPalette16 shiftedPalette;
+void shiftPalette(){
+
+for (int i = 0; i < 16; i++) {
+    shiftedPalette[i] = shiftHue(blendedPalette[i], hueShiftINDX);
+}
+}
+
+void blendMultiplePalettes(int channel) {
+
+auto& ch = channels[channel];  // Alias for clarity
+        phaseOffset=ch.steepness;
+     hueShiftINDX=ch.sinscl;
+    
+        uint8_t blendIndex = ch.mask;
+
+    if (numPalettes < 2) {
+        // Not enough palettes to blend
+        blendedPalette = palettes[0];
+        return;
+    }
+
+    // Scale 0–255 across (numPalettes - 1) segments
+    float position = (blendIndex / 255.0f) * (numPalettes - 1);
+
+    uint8_t indexA = floor(position);
+    uint8_t indexB = min(indexA + 1, numPalettes - 1);
+
+    float blendAmount = position - indexA; // Fractional part, 0.0–1.0
+    uint8_t blendAmount8 = (uint8_t)(blendAmount * 255); // Convert to 0–255
+
+    for (int i = 0; i < 16; i++) {
+        CRGB colorA = palettes[indexA][i];
+        CRGB colorB = palettes[indexB][i];
+        blendedPalette[i] = blend(colorA, colorB, blendAmount8);
+    }
+}
+
 
 CRGBPalette16 currentPalette = Schmussn;
 CRGB ColorFromCurrentPalette(uint8_t index = 0, uint8_t brightness = 255, TBlendType blendType = LINEARBLEND)
 {
-  return ColorFromPalette(blendedPalette, index, brightness, blendType);
+  // Apply phase offset (wrap automatically since uint8_t rolls over)
+
+  uint8_t shiftedIndex = index + phaseOffset;  
+  return  ColorFromPalette(shiftedPalette, shiftedIndex, brightness, blendType);
 }
 #endif

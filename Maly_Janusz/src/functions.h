@@ -96,7 +96,7 @@ void initParams()
         channels[i].sinscl = 0.025f;
         channels[i].mask = 128.0f;
         channels[i].steepness = 128.0f;
-        channels[i].more = 128.0f;
+ 
     }
 }
 
@@ -104,6 +104,7 @@ void generateNoiseFrame(int ch_X, int ch_Y)
 {
     auto& CHX = channels[ch_X];
     auto& CHY = channels[ch_Y];
+    
 
     for (int x = 0; x < PANEL_RES_X; x++)
     {
@@ -115,7 +116,9 @@ void generateNoiseFrame(int ch_X, int ch_Y)
             k = inoise16(x * CHY.nsclx, y * CHY.nscly, time_counter * CHY.tscl);
             uint8_t v_res = v * CHX .sinscl;
             uint8_t k_res = k * CHY.sinscl;
-            currentColor = ColorFromPalette(blendedPalette, (((sin8(v_res) * cos8(v_res)) / (1+CHX .mask)) + ((sin8(k_res) * cos8(k_res)) / (1+ CHY.mask))) / 2);
+            uint8_t paletteIndex =(((sin8(v_res) * cos8(v_res)) / (1+CHX .mask)) + ((sin8(k_res) * cos8(k_res)) / (1+ CHY.mask))) / 2;             
+            //currentColor = ColorFromPalette(blendedPalette, paletteIndex);
+            currentColor=ColorFromCurrentPalette(paletteIndex);
             pixels[x + PANEL_RES_X * y] = currentColor;
         }
     }
@@ -222,16 +225,28 @@ void updateSliderValues()
 {
     for (int i = 0; i < 5; ++i)
     {
-        int baseIndex = i * 6;
-        channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 50.0f, 1000.0f);
-        channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 50.0f, 1000.0f);
-        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 500.0f);
-        channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.01f, 0.1f);
+          int baseIndex = i * 6;
+        if(i==2){
+        channels[i].nsclx = sliderValues[baseIndex + 0];
+        channels[i].nscly = sliderValues[baseIndex + 1];
+        channels[i].tscl = sliderValues[baseIndex + 2];
+        channels[i].sinscl = sliderValues[baseIndex + 3];
+        channels[i].mask = sliderValues[baseIndex + 4];
+        channels[i].steepness = sliderValues[baseIndex + 5];
+        }
+        else{
+      
+        channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 0.1f, 2000.0f);
+        channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 0.1f, 2000.0f);
+        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 50.0f);
+        channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.005f, 0.1f);
         channels[i].mask = mapRange(sliderValues[baseIndex + 4], 0, 255, 0, 255);
         channels[i].steepness = mapRange(sliderValues[baseIndex + 5], 0, 255, 0, 255);
+        }
+
         
     }
-    //Serial.println("updating!");
+    
 
 }
 void rememberSettings(){
