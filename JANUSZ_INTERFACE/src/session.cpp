@@ -1,12 +1,14 @@
 #include "session.h"
-#include <esp_system.h>   // for esp_random()
+#include <esp_system.h> // for esp_random()
 
-SessionManager::SessionManager() {
+SessionManager::SessionManager()
+{
     randomSeed(esp_random());
 }
 
 // Generate a random token
-String SessionManager::generateToken() {
+String SessionManager::generateToken()
+{
     char buf[25];
     uint32_t r1 = esp_random();
     uint32_t r2 = esp_random();
@@ -14,8 +16,10 @@ String SessionManager::generateToken() {
     return String(buf);
 }
 
-void SessionManager::registerEndpoints(AsyncWebServer& server) {
-    server.on("/session", HTTP_GET, [this](AsyncWebServerRequest* request) {
+void SessionManager::registerEndpoints(AsyncWebServer &server)
+{
+    server.on("/session", HTTP_GET, [this](AsyncWebServerRequest *request)
+              {
         unsigned long now = millis();
 
         // Expire old session if needed
@@ -24,9 +28,10 @@ void SessionManager::registerEndpoints(AsyncWebServer& server) {
             activeToken = "";
         }
 
-        if (activeToken.isEmpty()) {
+        if (activeToken=="") {
             // Grant a new token
             activeToken = generateToken();
+ 
             lastActive = now;
 
             unsigned long remaining = timeoutMs / 1000;
@@ -34,7 +39,10 @@ void SessionManager::registerEndpoints(AsyncWebServer& server) {
             request->send(200, "application/json", body);
 
             Serial.println("New session granted: " + activeToken);
-        } else {
+           
+        }
+ 
+        else {
             // Already taken → tell client how long to wait
             unsigned long elapsed = now - lastActive;
             unsigned long timeLeft = (elapsed < timeoutMs) ? (timeoutMs - elapsed) / 1000 : 0;
@@ -43,22 +51,24 @@ void SessionManager::registerEndpoints(AsyncWebServer& server) {
             request->send(200, "application/json", body);
 
             Serial.println("Session busy, retry after " + String(timeLeft) + "s");
-        }
-    });
+        } });
 }
 
 // Validate token & refresh activity timer
-bool SessionManager::isValid(const String& token) {
+bool SessionManager::isValid(const String &token)
+{
     unsigned long now = millis();
 
     // Expire old session
-    if (activeToken.length() && (now - lastActive > timeoutMs)) {
+    if (activeToken.length() && (now - lastActive > timeoutMs))
+    {
         Serial.println("Session expired, clearing token");
         activeToken = "";
         return false;
     }
 
-    if (token == activeToken) {
+    if (token == activeToken)
+    {
         lastActive = now;
         return true;
     }
@@ -66,6 +76,7 @@ bool SessionManager::isValid(const String& token) {
 }
 
 // Optional: force reset
-void SessionManager::reset() {
+void SessionManager::reset()
+{
     activeToken = "";
 }

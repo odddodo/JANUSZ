@@ -3,6 +3,7 @@
 #include <ESPAsyncWebServer.h>
 
 const char index_html[] PROGMEM = R"rawliteral(
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -76,6 +77,30 @@ const char index_html[] PROGMEM = R"rawliteral(
   let retryAfter = 0;  // wait countdown
 
   // ---------------------------
+  // Heartbeat
+  // ---------------------------
+  let heartbeatInterval = null;
+
+  function startHeartbeat() {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    heartbeatInterval = setInterval(() => {
+      if (token && remaining > 0) {
+        fetch("/heartbeat", {
+          method: "POST",
+          headers: { "X-Token": token }
+        }).catch(console.error);
+      }
+    }, 5000); // every 5s
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+  }
+
+  // ---------------------------
   // Get or renew token
   // ---------------------------
   async function ensureToken() {
@@ -88,9 +113,11 @@ const char index_html[] PROGMEM = R"rawliteral(
         localStorage.setItem("token", token);
         remaining = j.remaining || 0;
         retryAfter = 0;
+        startHeartbeat();   // ✅ start sending heartbeats when active
       } else if (j.status === "busy") {
         retryAfter = j.retryAfter || 0;
         remaining = 0;
+        stopHeartbeat();    // ✅ stop heartbeat when inactive
       }
     } catch (e) {
       console.error("Failed to get session token:", e);
@@ -298,7 +325,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
 
     // Inactive users refresh slider values every 2s
-    if (retryAfter > 0 && (Date.now() % 2000 < 100)) {
+    if (retryAfter > 0 && (Date.now() % 1000 < 100)) {
       loadSliders();
     }
   }

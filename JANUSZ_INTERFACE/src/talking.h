@@ -116,7 +116,7 @@ void talkI2C(bool sendSave = false, bool sendLoad = false) {
     uint8_t err = Wire.endTransmission();
 
     if (err == 0) {
-        Serial.println("Data sent");
+        //Serial.println("Data sent");
         memcpy(lastSentArray, dataArray, SLIDERSCOUNT);
         lastSendTime = now;
     } else {
