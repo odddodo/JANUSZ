@@ -238,8 +238,8 @@ void updateSliderValues()
       
         channels[i].nsclx = mapRange(sliderValues[baseIndex + 0], 0, 255, 0.1f, 2000.0f);
         channels[i].nscly = mapRange(sliderValues[baseIndex + 1], 0, 255, 0.1f, 2000.0f);
-        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 50.0f);
-        channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.005f, 0.1f);
+        channels[i].tscl = mapRange(sliderValues[baseIndex + 2], 0, 255, 0.1f, 300.0f);
+        channels[i].sinscl = mapRange(sliderValues[baseIndex + 3], 0, 255, 0.01f, 0.1f);
         channels[i].mask = mapRange(sliderValues[baseIndex + 4], 0, 255, 0, 255);
         channels[i].steepness = mapRange(sliderValues[baseIndex + 5], 0, 255, 0, 255);
         }

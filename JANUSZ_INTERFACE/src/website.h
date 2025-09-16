@@ -15,6 +15,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       overflow: hidden;
       touch-action: none;
       height: 100%;
+      font-family: sans-serif;
+      color: white;
     }
 
     canvas {
@@ -24,8 +26,8 @@ const char index_html[] PROGMEM = R"rawliteral(
 
     #fullscreen-btn {
       position: fixed;
-      top: 10px;
       right: 10px;
+      top: 10px;
       background: rgba(255, 255, 255, 0.1);
       color: rgb(255, 255, 255);
       border: 1px solid white;
@@ -41,47 +43,78 @@ const char index_html[] PROGMEM = R"rawliteral(
       background: rgba(255, 255, 255, 0.2);
     }
 
-    #save-btn {
+    #status {
       position: fixed;
-      top: 50px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.1);
-      color: rgb(255, 255, 255);
-      border: 1px solid white;
-      border-radius: 8px;
-      padding: 8px 12px;
+      top: 10px;
+      left: 10px;
       font-size: 14px;
-      cursor: pointer;
-      z-index: 10;
-      transition: background 0.3s;
-    }
-
-    #save-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
+      z-index: 20;
     }
   </style>
 </head>
 <body>
+<div id="status"></div>
 <canvas id="canvas"></canvas>
 <button id="fullscreen-btn">Go Fullscreen</button>
-<button id="save-btn">Save</button>
 
 <script>
   const NUM_SLIDERS = 30;
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   const fullscreenBtn = document.getElementById('fullscreen-btn');
-  const saveBtn = document.getElementById('save-btn');
+  const statusEl = document.getElementById('status');
 
   let sliders = [];
-  let lastSliderValues = [];
   let center = { x: 0, y: 0 };
   let innerRadius = 50;
   let outerRadius = 0;
   let draggingIndex = -1;
   let lastSent = 0;
 
-  const groupColors = ["red", "orange", "blue", "yellow", "magenta"]; // 5 groups of 6
+  let token = localStorage.getItem('token') || '';
+  let remaining = 0;   // session countdown
+  let retryAfter = 0;  // wait countdown
+
+  // ---------------------------
+  // Get or renew token
+  // ---------------------------
+  async function ensureToken() {
+    try {
+      const r = await fetch("/session");
+      const j = await r.json();
+
+      if (j.token) {
+        token = j.token;
+        localStorage.setItem("token", token);
+        remaining = j.remaining || 0;
+        retryAfter = 0;
+      } else if (j.status === "busy") {
+        retryAfter = j.retryAfter || 0;
+        remaining = 0;
+      }
+    } catch (e) {
+      console.error("Failed to get session token:", e);
+    }
+  }
+
+  // ---------------------------
+  // Load sliders from device
+  // ---------------------------
+  async function loadSliders() {
+    try {
+      const r = await fetch("/get_sliders", {
+        headers: { "X-Token": token || "" }
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const values = await r.json();
+      for (let i = 0; i < NUM_SLIDERS; i++) {
+        sliders[i] = values[i] / 255;
+      }
+      draw();
+    } catch (err) {
+      console.error("Failed to load sliders:", err);
+    }
+  }
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -93,29 +126,10 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
 
   function setup() {
-    for (let i = 0; i < NUM_SLIDERS; i++) {
-      sliders[i] = 0.5;
-      lastSliderValues[i] = -1;
-    }
+    for (let i = 0; i < NUM_SLIDERS; i++) sliders[i] = 0.5;
     resize();
+    ensureToken().then(loadSliders);
   }
-
-  // ---------------------------
-  // Load sliders from master/slave
-  // ---------------------------
-  function loadSliders() {
-    fetch("/get_sliders")
-      .then(response => response.json())
-      .then(values => {
-        for (let i = 0; i < NUM_SLIDERS; i++) {
-          sliders[i] = values[i] / 255; // normalize 0–1
-        }
-        draw(); // update canvas
-      })
-      .catch(err => console.error("Failed to load sliders:", err));
-  }
-
-  window.addEventListener('load', loadSliders);
 
   function getHandlePos(i, v) {
     const angle = (2 * Math.PI * i) / NUM_SLIDERS;
@@ -143,17 +157,17 @@ const char index_html[] PROGMEM = R"rawliteral(
       ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
     }
     ctx.closePath();
-    ctx.strokeStyle = 'white';
+    ctx.strokeStyle = retryAfter > 0 ? 'darkgray' : 'white'; // darker when inactive
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
   function drawHandles(points) {
+    const groupColors = ["red", "orange", "blue", "yellow", "magenta"];
     for (let i = 0; i < points.length; i++) {
-      const groupIndex = Math.floor(i / 6); // 0–4
       ctx.beginPath();
       ctx.arc(points[i].x, points[i].y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = groupColors[groupIndex];
+      ctx.fillStyle = retryAfter > 0 ? "darkgray" : groupColors[Math.floor(i / 6)];
       ctx.fill();
     }
   }
@@ -177,6 +191,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
 
   function updateHandle(index, x, y) {
+    if (retryAfter > 0) return; // inactive users cannot drag
     const angle = (2 * Math.PI * index) / NUM_SLIDERS;
     const dx = x - center.x;
     const dy = y - center.y;
@@ -186,7 +201,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     const r = Math.max(innerRadius, Math.min(outerRadius, projection));
     sliders[index] = (r - innerRadius) / (outerRadius - innerRadius);
     draw();
-    sendSliderValues(); // trigger sending updated values
+    sendSliderValues();
   }
 
   function getEventPos(evt) {
@@ -205,6 +220,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   }
 
   function onStart(evt) {
+    if (retryAfter > 0) return; // inactive cannot drag
     const { x, y } = getEventPos(evt);
     draggingIndex = getNearestHandle(x, y);
     if (draggingIndex !== -1) {
@@ -248,28 +264,46 @@ const char index_html[] PROGMEM = R"rawliteral(
     }
   });
 
-  saveBtn.addEventListener('click', () => {
-    fetch("/save", { method: "POST" })
-      .then(() => {
-        console.log("Save triggered");
-        loadSliders(); // refresh sliders after saving
-      })
-      .catch(console.error);
-  });
-
   function sendSliderValues() {
+    if (retryAfter > 0) return; // inactive users cannot send
     const now = Date.now();
-    if (now - lastSent < 50) return; // throttle to max 20 fps
+    if (now - lastSent < 50) return;
     lastSent = now;
 
     const values = sliders.map(v => Math.round(v * 255));
 
     fetch("/sliders", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Token": token || ""
+      },
       body: JSON.stringify(values)
     }).catch(console.error);
   }
+
+  // ---------------------------
+  // Status updater & auto-refresh
+  // ---------------------------
+  function updateStatus() {
+    if (remaining > 0) {
+      statusEl.textContent = "you have " + remaining + " seconds left";
+      remaining--;
+    } else if (retryAfter > 0) {
+      statusEl.textContent = "i am talking to somebody else now. try again in " + retryAfter + "s";
+      retryAfter--;
+      if (retryAfter === 0) ensureToken();
+    } else {
+      statusEl.textContent = "";
+    }
+
+    // Inactive users refresh slider values every 2s
+    if (retryAfter > 0 && (Date.now() % 2000 < 100)) {
+      loadSliders();
+    }
+  }
+
+  setInterval(updateStatus, 1000);
 
   setup();
 </script>
