@@ -5,18 +5,16 @@
 #include "parameters.h"
 #include "functions.h"
 
-
 #define I2C_SLAVE_ADDR 0x08
-
 #define SAVE_COMMAND_BYTE 0xFF
-#define LOAD_COMMAND_BYTE 0xFE
+#define ERROR_CODE        0xEE   // Special error code
 
 bool dataReady = false;
 bool saveTriggered = false;
+uint8_t lastErrorCode = 0;   // Tracks last error for master notification
 
 // Initialize default values
-void initSliderValues()
-{
+void initSliderValues() {
     for (int i = 0; i < NUMSLIDERS; i++) {
         sliderValues[i] = 128;
     }
@@ -24,43 +22,49 @@ void initSliderValues()
 }
 
 void receiveEvent(int numBytes) {
-  if (numBytes < NUMSLIDERS + 1) return;
+    if (numBytes < NUMSLIDERS + 1) return;
 
-  uint8_t buffer[NUMSLIDERS];
-  for (int i = 0; i < NUMSLIDERS; i++) {
-    if (Wire2.available()) {
-      buffer[i] = Wire2.read();
+    uint8_t buffer[NUMSLIDERS];
+    for (int i = 0; i < NUMSLIDERS; i++) {
+        if (Wire2.available()) {
+            buffer[i] = Wire2.read();
+        }
     }
-  }
 
-  if (!Wire2.available()) return;
+    if (!Wire2.available()) return;
 
-  uint8_t receivedChecksum = Wire2.read();
-uint8_t calculatedChecksum = 0;
-for (int i = 0; i < NUMSLIDERS; i++) {
-  calculatedChecksum ^= buffer[i];
+    uint8_t receivedChecksum = Wire2.read();
+    uint8_t calculatedChecksum = 0;
+    for (int i = 0; i < NUMSLIDERS; i++) {
+        calculatedChecksum ^= buffer[i];
+    }
+
+    if ((calculatedChecksum & 0xFF) == receivedChecksum) {
+        memcpy(sliderValues, buffer, NUMSLIDERS);
+        dataReady = true;
+
+        if (Wire2.available()) {
+            uint8_t command = Wire2.read();
+            if (command == SAVE_COMMAND_BYTE) {
+                saveTriggered = true;
+                Serial.println("Saving triggered");
+            }
+        }
+        lastErrorCode = 0;  // ✅ clear error on success
+    } else {
+        Serial.println("Checksum mismatch!");
+        lastErrorCode = ERROR_CODE;  // ✅ flag error for next request
+    }
 }
 
-
-  if ((calculatedChecksum & 0xFF) == receivedChecksum) {
-    memcpy(sliderValues, buffer, NUMSLIDERS);
-    dataReady = true;
-
-    if (Wire2.available()) {
-      uint8_t command = Wire2.read();
-      if (command == SAVE_COMMAND_BYTE) {
-        // Handle save logic
-        saveTriggered = true;
-        Serial.println("saving triggered");
-      }
-    }
-  } else {
-    Serial.println("Checksum mismatch!");
-  }
-}
-
-// I2C request handler (if master asks for data)
+// Master requests data → send slider values + checksum OR error
 void requestEvent() {
+    if (lastErrorCode != 0) {
+        Wire2.write(lastErrorCode);  // ✅ notify master
+        lastErrorCode = 0;           // reset error code after reporting
+        return;
+    }
+
     uint8_t checksum = 0;
     for (int i = 0; i < NUMSLIDERS; i++) {
         Wire2.write(sliderValues[i]);
@@ -73,14 +77,10 @@ void requestEvent() {
 void initTalking() {
     Serial.begin(115200);
 
-    // Use Wire (or Wire1 / Wire2 depending on platform)
-   
-#//if defined(ARDUINO_ARCH_ESP32)
+    // ESP32-specific Wire2 usage
     Wire2.begin(I2C_SLAVE_ADDR);
-    //Wire2.setClock(400000);
-        Wire2.setSCL(24);  // Or your actual SCL pin
-    Wire2.setSDA(25);  // Or your actual SDA pin
-//#endif
+    Wire2.setSCL(24);
+    Wire2.setSDA(25);
 
     Wire2.onReceive(receiveEvent);
     Wire2.onRequest(requestEvent);

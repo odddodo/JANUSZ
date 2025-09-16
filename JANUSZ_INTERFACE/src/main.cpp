@@ -34,7 +34,7 @@ void setup()
   initSerial();
   init_values();
   init_talking();
-  
+ 
 
   // Start WiFi in AP mode
   WiFi.softAP(ssid, password);
@@ -95,4 +95,5 @@ void loop()
 {
   //debug();
   talkI2C();
+  
 }
